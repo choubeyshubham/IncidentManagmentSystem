@@ -1,6 +1,6 @@
 package in.choubeyshubham.assignment.repository;
 
-import org.apache.catalina.User;
+import in.choubeyshubham.assignment.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
