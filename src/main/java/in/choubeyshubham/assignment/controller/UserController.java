@@ -17,7 +17,6 @@ import java.util.Optional;
 public class UserController {
 
 
-    //    @Autowired
     private final UserService userService;
 
     public UserController(UserService userService) {
@@ -62,14 +61,10 @@ public class UserController {
     @PostMapping("/forgot-password")
     public ResponseEntity<String> forgotPassword(@RequestBody Map<String, String> request) {
         String email = request.get("email");
-        String newPassword = request.get("newPassword");
-        String response = userService.resetPassword(email, newPassword);
-
-        if (response.equals("User not found.")) {
-            return ResponseEntity.status(404).body(response);
-        }
-        return ResponseEntity.ok(response);
+        userService.requestPasswordReset(email);
+        return ResponseEntity.ok("Password reset link sent to your email.");
     }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteUser(@PathVariable Long id, HttpServletRequest req) {
         if (!userService.isAdmin(req.getAttribute("email").toString())) {
@@ -87,6 +82,18 @@ public class UserController {
         boolean isAdmin = request.get("isAdmin");
         userService.updateUserRole(id, isAdmin);
         return ResponseEntity.ok("User role updated successfully.");
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        String newPassword = request.get("newPassword");
+        boolean success = userService.resetPassword(email, newPassword);
+
+        if (!success) {
+            return ResponseEntity.status(404).body("User not found.");
+        }
+        return ResponseEntity.ok("Password reset successful.");
     }
 
 

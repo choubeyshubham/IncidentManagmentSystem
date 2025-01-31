@@ -2,6 +2,7 @@ package in.choubeyshubham.assignment.service;
 
 import in.choubeyshubham.assignment.model.User;
 import in.choubeyshubham.assignment.repository.UserRepository;
+import in.choubeyshubham.assignment.util.EmailService;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,15 +20,19 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final EmailService emailService;
+
+    public UserService(EmailService emailService, BCryptPasswordEncoder passwordEncoder, UserRepository userRepository) {
+        this.emailService = emailService;
+        this.passwordEncoder = passwordEncoder;
+        this.userRepository = userRepository;
+    }
+
     private final String SECRET_KEY = "mySecretKey1234567890123456";
     public final SecretKey key = Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
-//Controller
 
 
-    public UserService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-    }
+    //---------------------------------------
 
     public User registerUser(User user) {
         user.setPassword(passwordEncoder.encode(user.getPassword()));
@@ -52,12 +57,12 @@ public class UserService {
                 .orElse(false);
     }
 
-    public String resetPassword(String email, String newPassword) {
+    public boolean resetPassword(String email, String newPassword) {
         return userRepository.findByEmail(email).map(user -> {
             user.setPassword(passwordEncoder.encode(newPassword));
             userRepository.save(user);
-            return "Password reset successful.";
-        }).orElse("User not found.");
+            return true;
+        }).orElse(false);
     }
     public List<User> getAllUsers() {
         return userRepository.findAll();
@@ -72,6 +77,15 @@ public class UserService {
 
     public void deleteUser(Long id) {
         userRepository.deleteById(id);
+    }
+
+
+    public void requestPasswordReset(String email) {
+        userRepository.findByEmail(email).ifPresent(user -> {
+            String resetLink = "http://localhost:4200/reset-password?email=" + email;
+            emailService.sendEmail(email, "Password Reset Request",
+                    "Click the following link to reset your password: " + resetLink);
+        });
     }
 
 }

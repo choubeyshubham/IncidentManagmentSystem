@@ -1,6 +1,8 @@
 package in.choubeyshubham.assignment.controller;
 
+import in.choubeyshubham.assignment.model.AuditLog;
 import in.choubeyshubham.assignment.model.Incident;
+import in.choubeyshubham.assignment.service.AuditLogService;
 import in.choubeyshubham.assignment.service.IncidentService;
 import in.choubeyshubham.assignment.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,16 +16,23 @@ import java.util.List;
 public class IncidentController {
     private final IncidentService incidentService;
     private final UserService userService;
-    public IncidentController(IncidentService incidentService, UserService userService) {
+    private final AuditLogService auditLogService;
+
+    public IncidentController(IncidentService incidentService, UserService userService, AuditLogService auditLogService) {
         this.incidentService = incidentService;
         this.userService = userService;
+        this.auditLogService = auditLogService;
+    }
+
+    @GetMapping("/{id}/audit-logs")
+    public ResponseEntity<List<AuditLog>> getIncidentAuditLogs(@PathVariable String id) {
+        return ResponseEntity.ok(auditLogService.getAuditLogsForIncident(id));
     }
 
     @PostMapping
-    public ResponseEntity<?> createIncident(@RequestBody Incident incident, HttpServletRequest request) {
-        String reporterEmail = (String) request.getAttribute("email");
-        incident.setReporterEmail(reporterEmail);
-        Incident savedIncident = incidentService.createIncident(incident);
+    public ResponseEntity<Incident> createIncident(@RequestBody Incident incident, HttpServletRequest request) {
+        String reporterEmail = (String) request.getAttribute("email"); // ✅ Get email from request
+        Incident savedIncident = incidentService.createIncident(incident, reporterEmail); // ✅ Pass email
         return ResponseEntity.ok(savedIncident);
     }
 
