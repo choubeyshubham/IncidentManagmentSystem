@@ -1,61 +1,60 @@
 package in.choubeyshubham.assignment.service;
 
 import in.choubeyshubham.assignment.model.Incident;
-import in.choubeyshubham.assignment.model.User;
 import in.choubeyshubham.assignment.repository.IncidentRepository;
-import in.choubeyshubham.assignment.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 @Service
 public class IncidentService {
-    private final IncidentRepository incidentRepository;
-    private final UserRepository userRepository;
 
-    public IncidentService(IncidentRepository incidentRepository, UserRepository userRepository) {
+    private final IncidentRepository incidentRepository;
+    public IncidentService(IncidentRepository incidentRepository) {
         this.incidentRepository = incidentRepository;
-        this.userRepository = userRepository;
     }
 
-    public Incident createIncident(Long userId, Incident incident) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        incident.setUser(user);
-        incident.setReportedDate(LocalDateTime.now());
-        incident.setIncidentId(generateIncidentId());
-
+    public Incident createIncident(Incident incident) {
         return incidentRepository.save(incident);
     }
 
-    public List<Incident> getUserIncidents(Long userId) {
-        return incidentRepository.findByUserId(userId);
+    public List<Incident> getUserIncidents(String reporterEmail) {
+        return incidentRepository.findByReporterEmail(reporterEmail);
     }
 
     public Optional<Incident> getIncidentById(String incidentId) {
         return incidentRepository.findByIncidentId(incidentId);
     }
 
-    public Incident updateIncident(String incidentId, Incident updatedIncident) {
-        Incident incident = incidentRepository.findByIncidentId(incidentId)
-                .orElseThrow(() -> new RuntimeException("Incident not found"));
+    public Incident updateIncident(Long id, Incident updatedIncident, String reporterEmail, boolean isAdmin) {
+        return incidentRepository.findById(id).map(incident -> {
+            if (!incident.getStatus().equals("Closed") && (incident.getReporterEmail().equals(reporterEmail) || isAdmin)) {
+                incident.setDescription(updatedIncident.getDescription());
+                incident.setPriority(updatedIncident.getPriority());
+                incident.setStatus(updatedIncident.getStatus());
+                return incidentRepository.save(incident);
+            }
+            throw new IllegalStateException("Unauthorized or Closed incidents cannot be edited");
+        }).orElseThrow(() -> new IllegalArgumentException("Incident not found"));
+    }
 
-        if (!"Closed".equalsIgnoreCase(incident.getStatus())) {
-            incident.setDetails(updatedIncident.getDetails());
-            incident.setPriority(updatedIncident.getPriority());
-            incident.setStatus(updatedIncident.getStatus());
-            return incidentRepository.save(incident);
-        } else {
-            throw new RuntimeException("Closed incidents cannot be edited");
+//    public void deleteIncident(Long id, boolean isAdmin) {
+//        if (!isAdmin) {
+//            throw new IllegalStateException("Only admins can delete incidents");
+//        }
+//        incidentRepository.deleteById(id);
+//    }
+
+    public void deleteIncident(Long id, String reporterEmail, boolean isAdmin) {
+        Incident incident = incidentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Incident not found"));
+
+        if (!isAdmin && !incident.getReporterEmail().equals(reporterEmail)) {
+            throw new IllegalStateException("Unauthorized: You can only delete your own incidents");
         }
+
+        incidentRepository.deleteById(id);
     }
 
-    private String generateIncidentId() {
-        int randomNum = (int) (Math.random() * 90000) + 10000;
-        return "RMG" + randomNum + LocalDateTime.now().getYear();
-    }
 }
-
